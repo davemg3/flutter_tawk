@@ -23,6 +23,15 @@ class Tawk extends StatefulWidget {
   /// Render your own loading widget.
   final Widget? placeholder;
 
+  /// Error callback.
+  final ValueChanged<dynamic>? onError;
+
+  /// Circular progress indicator color
+  final Color? loadingColor;
+
+  /// Called for cleaning the cache
+  final bool clearCache;
+
   const Tawk({
     Key? key,
     required this.directChatLink,
@@ -30,50 +39,37 @@ class Tawk extends StatefulWidget {
     this.onLoad,
     this.onLinkTap,
     this.placeholder,
+    this.onError,
+    this.loadingColor,
+    this.clearCache = false,
   }) : super(key: key);
 
   @override
-  _TawkState createState() => _TawkState();
+  State<Tawk> createState() => _TawkState();
 }
 
 class _TawkState extends State<Tawk> {
-  late WebViewController _controller;
+  late final WebViewController _controller;
   bool _isLoading = true;
 
-  void _setUser(TawkVisitor visitor) {
-    final json = jsonEncode(visitor);
-    String javascriptString;
+  @override
+  void initState() {
+    super.initState();
 
-    if (Platform.isIOS) {
-      javascriptString = '''
-        Tawk_API = Tawk_API || {};
-        Tawk_API.setAttributes($json);
-      ''';
-    } else {
-      javascriptString = '''
-        Tawk_API = Tawk_API || {};
-        Tawk_API.onLoad = function() {
-          Tawk_API.setAttributes($json);
-        };
-      ''';
+    _controller = WebViewController();
+
+    if (widget.clearCache) {
+      WebViewCookieManager().clearCookies();
+      _controller.clearCache();
+      _controller.clearLocalStorage();
     }
 
-    _controller.runJavascript(javascriptString);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        WebView(
-          initialUrl: widget.directChatLink,
-          javascriptMode: JavascriptMode.unrestricted,
-          onWebViewCreated: (WebViewController webViewController) {
-            setState(() {
-              _controller = webViewController;
-            });
-          },
-          navigationDelegate: (NavigationRequest request) {
+    _controller
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onWebResourceError: widget.onError,
+          onNavigationRequest: (NavigationRequest request) {
             if (request.url == 'about:blank' ||
                 request.url.contains('tawk.to')) {
               return NavigationDecision.navigate;
@@ -99,10 +95,52 @@ class _TawkState extends State<Tawk> {
             });
           },
         ),
+      )
+      ..loadRequest(Uri.parse(widget.directChatLink));
+  }
+
+  void _setUser(TawkVisitor visitor) {
+    final json = jsonEncode(visitor);
+    String javascriptString;
+
+    if (Platform.isIOS) {
+      javascriptString = '''
+        Tawk_API = Tawk_API || {};
+        Tawk_API.setAttributes($json);
+      ''';
+    } else {
+      javascriptString = '''
+        Tawk_API = Tawk_API || {};
+        Tawk_API.onLoad = function() {
+          Tawk_API.setAttributes($json);
+        };
+      ''';
+    }
+
+    try {
+      _controller.runJavaScript(javascriptString);
+    } catch (e) {
+      widget.onError?.call(e);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final loadingColor = widget.loadingColor;
+
+    return Stack(
+      children: [
+        WebViewWidget(
+          controller: _controller,
+        ),
         _isLoading
             ? widget.placeholder ??
-                const Center(
-                  child: CircularProgressIndicator(),
+                Center(
+                  child: CircularProgressIndicator.adaptive(
+                    valueColor: loadingColor != null
+                        ? AlwaysStoppedAnimation<Color>(loadingColor)
+                        : null,
+                  ),
                 )
             : Container(),
       ],
