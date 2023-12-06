@@ -128,12 +128,24 @@ class _TawkState extends State<Tawk> {
   Widget build(BuildContext context) {
     final loadingColor = widget.loadingColor;
 
-    return Container(
-      child: !_isLoading
-          ? WebViewWidget(
-              controller: _controller,
-            )
-          : Container(),
+    return Stack(
+      children: [
+        /*_isLoading
+            ? */
+        widget.placeholder ??
+            Center(
+              child: CircularProgressIndicator.adaptive(
+                valueColor: loadingColor != null
+                    ? AlwaysStoppedAnimation<Color>(loadingColor)
+                    : null,
+              ),
+            ) /* : Container()*/,
+        !_isLoading
+            ? WebViewWidget(
+                controller: _controller,
+              )
+            : Container(),
+      ],
     );
   }
 }
