@@ -130,9 +130,11 @@ class _TawkState extends State<Tawk> {
 
     return Stack(
       children: [
-        WebViewWidget(
-          controller: _controller,
-        ),
+        !_isLoading
+            ? WebViewWidget(
+                controller: _controller,
+              )
+            : Container(),
         _isLoading
             ? widget.placeholder ??
                 Center(
