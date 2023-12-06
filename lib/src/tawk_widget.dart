@@ -129,6 +129,7 @@ class _TawkState extends State<Tawk> {
     final loadingColor = widget.loadingColor;
 
     return Stack(
+      clipBehavior: Clip.hardEdge,
       children: [
         /*_isLoading
             ? */
