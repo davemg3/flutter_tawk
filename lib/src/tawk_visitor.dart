@@ -9,9 +9,12 @@ class TawkVisitor {
   /// [Secure mode](https://developer.tawk.to/jsapi/#SecureMode).
   final String? hash;
 
+  final String? lang;
+
   TawkVisitor({
     this.name,
     this.email,
+    this.lang,
     this.hash,
   });
 
@@ -28,6 +31,10 @@ class TawkVisitor {
 
     if (hash != null) {
       data['hash'] = hash;
+    }
+
+    if (lang != null) {
+      data['lang'] = 'WIDGET_FOR_$lang';
     }
 
     return data;
